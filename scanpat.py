@@ -5,7 +5,7 @@ import re
 import sys
 
 
-VARIABLE_PATTERN = re.compile(r"\$(reg|imm)\b")
+VARIABLE_PATTERN = re.compile(r"\$(reg|nreg|lreg|hreg|imm)\b")
 
 X86_GPR_NAMES = [
     "eax",
@@ -44,10 +44,21 @@ def generate_pattern(spec, assembler):
     if r2 is None:
         r2 = r2pipe.open("-", flags=["-2"])
 
-    if assembler.startswith("arm") and assembler.endswith(":64"):
+    if assembler.startswith("arm") and assembler.endswith(":16"):
+        reg_handler = (generate_register_name_arm, (0, 15))
+        nreg_handler = reg_handler
+        lreg_handler = (generate_register_name_arm, (0, 8))
+        hreg_handler = (generate_register_name_arm, (8, 16))
+    elif assembler.startswith("arm") and assembler.endswith(":64"):
         reg_handler = (generate_register_name_arm64, (0, 32))
+        nreg_handler = (generate_narrow_register_name_arm64, (0, 32))
+        lreg_handler = reg_handler
+        hreg_handler = reg_handler
     else:
         reg_handler = (generate_register_name_x86, (0, len(X86_GPR_NAMES)))
+        nreg_handler = (generate_register_name_x86, (0, 8))
+        lreg_handler = reg_handler
+        hreg_handler = reg_handler
 
     compiled_spec = []
     start = 0
@@ -59,6 +70,12 @@ def generate_pattern(spec, assembler):
 
         if kind == 'reg':
             handler = reg_handler
+        elif kind == 'nreg':
+            handler = nreg_handler
+        elif kind == 'lreg':
+            handler = lreg_handler
+        elif kind == 'hreg':
+            handler = hreg_handler
         elif kind == 'imm':
             handler = (generate_immediate, (0, 512))
 
@@ -140,8 +157,16 @@ def generate_pattern(spec, assembler):
     return f"{example} : {mask}"
 
 
+def generate_register_name_arm(offset):
+    return f"r{offset}"
+
+
 def generate_register_name_arm64(offset):
     return f"x{offset}"
+
+
+def generate_narrow_register_name_arm64(offset):
+    return f"w{offset}"
 
 
 def generate_register_name_x86(offset):
