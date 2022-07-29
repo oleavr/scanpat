@@ -85,7 +85,7 @@ def generate_pattern(spec, assembler):
     text_remaining = spec[start:]
     compiled_spec.append(text_remaining)
 
-    expressions = []
+    expressions = set()
     current_variable_index = 0
     for current_part in compiled_spec:
         if isinstance(current_part, tuple):
@@ -107,7 +107,7 @@ def generate_pattern(spec, assembler):
 
             generate, (start, end) = current_part
             for val in range(start, end):
-                expressions.append("".join([prefix, generate(val), suffix]))
+                expressions.add("".join([prefix, generate(val), suffix]))
 
         current_variable_index += 1
 
